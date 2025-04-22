@@ -1,0 +1,48 @@
+body{
+    background-color: F5F5F5;
+    font-family:'Lato', sans-serif;
+    text-align: center
+}
+
+.races{
+    font-weight: bold;
+    font-size: larger;
+}
+
+h1{
+    font-family:'Roboto', sans-serif;
+    color:darkslategrey;
+    font-size: 40px;
+}
+
+h2{
+    text-decoration: underline;
+}
+
+ol, ul{
+    list-style-position: inside;
+    padding-left: 0;
+    text-align: center;
+}
+
+.tableauPlaceholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 40px auto;
+  }
+
+  .image-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* space between images */
+    margin-bottom: 30px;
+    flex-wrap: wrap; /* allows it to adjust for smaller screens */
+}
+
+.image-row img {
+    width: 200px;
+    height: auto;
+}
+
+  

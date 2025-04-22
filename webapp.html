@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wordle Clone</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121213;
+      color: white;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      margin: 20px 0;
+      font-size: 3rem;
+    }
+
+    #game-board {
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 10px;
+      width: 320px;
+      margin: 0 auto;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      font-size: 2rem;
+      font-weight: bold;
+      background-color: #3a3a3c;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+    }
+
+    .green { background-color: #538d4e; }
+    .yellow { background-color: #b59f3b; }
+    .grey { background-color: #3a3a3c; }
+
+    #message {
+      margin: 20px;
+      font-size: 1.2rem;
+      height: 24px;
+    }
+
+    #keyboard {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 5px;
+      width: 500px;
+      margin: 20px auto;
+    }
+
+    .key {
+      padding: 10px;
+      background: #818384;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .key.used { background: #3a3a3c; }
+    .key.correct { background: #538d4e; }
+    .key.present { background: #b59f3b; }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .emoji {
+      position: absolute;
+      font-size: 2rem;
+      animation: float 2s ease-out forwards;
+    }
+
+    @keyframes float {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-100px); }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Wordle</h1>
+<div id="game-board"></div>
+<div id="message"></div>
+<div id="keyboard"></div>
+<button id="restart-btn" style="display:none">Play Again</button>
+
+<canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none;"></canvas>
+
+<script>
+  const answers = [
+    'apple', 'grape', 'lemon', 'mango', 'peach', 'brave', 'ghost', 'plant', 'train', 'shine',
+    'stone', 'candy', 'proud', 'trick', 'clean', 'sugar', 'prize', 'dream', 'flame', 'crazy',
+    'smile', 'quick', 'jolly', 'bloom', 'crane', 'daisy', 'fleet', 'glove', 'hazel', 'irony',
+    'jelly', 'knife', 'lucky', 'mirth', 'noble', 'ocean', 'plush', 'quiet', 'roast', 'sheep',
+    'tiger', 'uncle', 'vivid', 'waltz', 'xenon', 'yield', 'zebra', 'adore', 'blush', 'charm'
+  ];
+  const word = answers[Math.floor(Math.random() * answers.length)];
+  const board = document.getElementById('game-board');
+  const message = document.getElementById('message');
+  const restartBtn = document.getElementById('restart-btn');
+  const keyboard = document.getElementById('keyboard');
+  const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
+  let currentRow = 0;
+  let currentGuess = '';
+  let isGameOver = false;
+
+  for (let i = 0; i < 6; i++) {
+    const row = document.createElement('div');
+    row.classList.add('row');
+    for (let j = 0; j < 5; j++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      row.appendChild(cell);
+    }
+    board.appendChild(row);
+  }
+
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.textContent = k;
+    btn.classList.add('key');
+    btn.addEventListener('click', () => handleKey(k));
+    keyboard.appendChild(btn);
+  });
+
+  function handleKey(letter) {
+    if (isGameOver) return;
+    if (currentGuess.length < 5) {
+      currentGuess += letter.toLowerCase();
+      updateBoard();
+    }
+  }
+
+  function handleBackspace() {
+    if (isGameOver || currentGuess.length === 0) return;
+    currentGuess = currentGuess.slice(0, -1);
+    updateBoard();
+  }
+
+  function handleEnter() {
+    if (isGameOver || currentGuess.length !== 5) return;
+
+    const guess = currentGuess;
+    const row = board.children[currentRow];
+    const correct = word.split('');
+    const guessArr = guess.split('');
+    const colorArr = Array(5).fill('grey');
+
+    for (let i = 0; i < 5; i++) {
+      if (guessArr[i] === correct[i]) {
+        colorArr[i] = 'green';
+        correct[i] = null;
+      }
+    }
+
+    for (let i = 0; i < 5; i++) {
+      if (colorArr[i] !== 'green' && correct.includes(guessArr[i])) {
+        colorArr[i] = 'yellow';
+        correct[correct.indexOf(guessArr[i])] = null;
+      }
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const cell = row.children[i];
+      cell.textContent = guessArr[i].toUpperCase();
+      cell.classList.add(colorArr[i]);
+
+      const key = [...keyboard.children].find(k => k.textContent === guessArr[i].toUpperCase());
+      if (key) {
+        key.classList.remove('key');
+        if (colorArr[i] === 'green') key.classList.add('correct');
+        else if (colorArr[i] === 'yellow') key.classList.add('present');
+        else key.classList.add('used');
+      }
+    }
+
+    if (guess === word) {
+      message.textContent = `You got it in ${currentRow + 1} tries!`;
+      triggerConfetti();
+      endGame();
+    } else {
+      currentRow++;
+      if (currentRow >= 6) {
+        message.textContent = `You ran out of guesses! The word was "${word}".`;
+        triggerFrownies();
+        endGame();
+      } else {
+        currentGuess = '';
+      }
+    }
+  }
+
+  function updateBoard() {
+    const row = board.children[currentRow];
+    for (let i = 0; i < 5; i++) {
+      row.children[i].textContent = currentGuess[i]?.toUpperCase() || '';
+    }
+  }
+
+  function endGame() {
+    isGameOver = true;
+    restartBtn.style.display = 'inline-block';
+  }
+
+  restartBtn.addEventListener('click', () => location.reload());
+
+  document.addEventListener('keydown', (e) => {
+    if (isGameOver) return;
+    if (e.key === 'Enter') handleEnter();
+    else if (e.key === 'Backspace') handleBackspace();
+    else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+  });
+
+  // 🎉 Confetti effect
+  function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const particles = [];
+
+    for (let i = 0; i < 150; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 6 + 2,
+        c: `hsl(${Math.random() * 360}, 100%, 50%)`,
+        d: Math.random() * 5 + 1
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.c;
+        ctx.fill();
+        p.y += p.d;
+        if (p.y > canvas.height) p.y = -10;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+    setTimeout(() => ctx.clearRect(0, 0, canvas.width, canvas.height), 3000);
+  }
+
+  // 😞 Frowny faces
+  function triggerFrownies() {
+    for (let i = 0; i < 20; i++) {
+      const face = document.createElement('div');
+      face.textContent = '😞';
+      face.className = 'emoji';
+      face.style.left = Math.random() * window.innerWidth + 'px';
+      face.style.top = Math.random() * window.innerHeight + 'px';
+      document.body.appendChild(face);
+      setTimeout(() => face.remove(), 2000);
+    }
+  }
+</script>
+
+</body>
+</html>
